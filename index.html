@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hold yourself together</title>
+<style>
+:root{--bg:#E3ECE6;--paper:#FFFFFF;--ink:#1C2B2E;--muted:#56686B;--line:#A9BCB3;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#142024;--paper:#1D2B2F;--ink:#E6EFEA;--muted:#9DB0AA;--line:#465D61;}}
+:root[data-theme="dark"]{--bg:#142024;--paper:#1D2B2F;--ink:#E6EFEA;--muted:#9DB0AA;--line:#465D61;}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.stage{position:relative;width:min(100vw,147vh);aspect-ratio:1000/680;max-height:100%}
+svg{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+.box{fill:var(--paper)}
+.ink-fill{fill:var(--ink)}
+.bg-text{fill:var(--bg);font-weight:700;font-size:18px}
+.name{font-weight:700;font-size:18px;fill:var(--ink)}
+.rule{font-size:13px;fill:var(--muted)}
+.ghost{fill:none;stroke:var(--line);stroke-width:2;stroke-dasharray:6 6}
+.hud{font-size:18px;fill:var(--ink)}
+.badge{font-size:14px;font-weight:700;fill:var(--ink)}
+.track{fill:var(--line)}
+.piece.grab,#mergeBtn,#center{cursor:pointer}
+.toast{position:absolute;top:2.5%;left:50%;transform:translateX(-50%);background:var(--paper);border:1.5px solid var(--ink);border-radius:999px;padding:.45em 1.1em;font-size:clamp(12px,1.7vw,18px);max-width:54%;text-align:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.overlay{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 90%,transparent);display:flex;align-items:center;justify-content:center;padding:4%;overflow:auto}
+.overlay[hidden]{display:none}
+.card{max-width:34em;text-align:center;margin:auto}
+h1{font-size:clamp(28px,5.5vw,64px);line-height:1;margin:0 0 .45em;font-weight:700;letter-spacing:-.02em}
+p{font-size:clamp(14px,1.8vw,19px);line-height:1.45;margin:0 0 .7em;color:var(--muted)}
+p.big{color:var(--ink);font-weight:700}
+button{font:inherit;font-weight:700;font-size:clamp(15px,1.9vw,20px);background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:.7em 1.6em;cursor:pointer;margin-top:.5em}
+button:focus-visible{outline:3px solid #4C86D9;outline-offset:3px}
+.cert{border:2px solid var(--ink);border-radius:6px;background:var(--paper);padding:1em 1.4em;margin:.9em auto;text-align:left;max-width:25em}
+.cert h2{margin:0 0 .5em;font-size:clamp(18px,2.6vw,28px);text-align:center;line-height:1.1}
+.cert dl{display:grid;grid-template-columns:1fr auto;gap:.25em 1em;margin:0;font-size:clamp(13px,1.6vw,17px)}
+.cert dt{color:var(--muted)}
+.cert dd{margin:0;font-weight:700;text-align:right}
+
+#end{align-items:flex-start;background:var(--bg)}
+#end .card{max-width:58em;width:100%;text-align:left;margin:auto}
+#end h1{font-size:clamp(26px,4vw,44px);margin-bottom:.25em}
+.end-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:1.6em;align-items:start}
+#end .cert{margin:.6em 0;max-width:none;padding:.8em 1em}
+#end .cert h2{font-size:clamp(17px,2.2vw,23px)}
+#end .cert dl{font-size:clamp(12px,1.4vw,16px)}
+.case-panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:1em 1.15em}
+.case-panel h2{font-size:clamp(19px,2.5vw,27px);margin:0 0 .35em}
+.case-panel h3{font-size:clamp(17px,2vw,22px);line-height:1.25;margin:.65em 0}
+.case-panel p{font-size:clamp(13px,1.5vw,17px);margin-bottom:.65em}
+.case-meta{font-size:12px;color:var(--muted);letter-spacing:.02em}
+.case-gap{border-left:3px solid var(--ink);padding-left:.7em}
+.case-source{color:var(--ink);font-weight:700;font-size:clamp(13px,1.5vw,16px);text-underline-offset:3px}
+.case-nav{display:flex;justify-content:space-between;align-items:center;gap:.5em;margin-top:.85em}
+.case-nav button{margin:0;padding:.4em .75em;background:transparent;color:var(--ink);border:1px solid var(--ink);font-size:clamp(13px,1.4vw,16px)}
+.case-nav button:disabled{opacity:.35;cursor:default}
+.case-nav span{font-size:13px;color:var(--muted)}
+.case-note{font-size:clamp(11px,1.25vw,14px)!important;margin:.85em 0 0!important}
+.case-story[hidden]{display:none}
+#end .reflection{margin-top:.9em;font-size:clamp(14px,1.65vw,18px)}
+@media(max-width:650px){.end-grid{grid-template-columns:1fr;gap:.8em}#end .card{margin:0}#end{padding:4%}#end .cert dl{font-size:13px}.case-panel p{font-size:14px}}
+
+#mergeHint{pointer-events:none}
+#mergeHint .hint-arrow{animation:mergeArrowPulse 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+#mergeHint .hint-label{font-size:17px;font-weight:700;fill:var(--ink)}
+#mergeBtn.merge-attention rect{animation:mergeBorderPulse 1.4s ease-in-out infinite}
+@keyframes mergeArrowPulse{0%,100%{opacity:.4;transform:translateX(5px)}50%{opacity:1;transform:translateX(0)}}
+@keyframes mergeBorderPulse{0%,100%{stroke-width:2}50%{stroke-width:5}}
+@media(prefers-reduced-motion:reduce){#mergeHint .hint-arrow,#mergeBtn.merge-attention rect{animation:none}#mergeBtn.merge-attention rect{stroke-width:4}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <svg id="arena" viewBox="0 0 1000 680" aria-label="Game: keep the six overlapping anatomy-system layers together, alone or with others">
+    <g id="tethers"></g><g id="desks"></g>
+    <g id="center" visibility="hidden">
+      <rect class="box" x="760" y="190" width="220" height="340" rx="14" style="stroke:var(--ink)" stroke-width="3"/>
+      <text class="name" x="870" y="224" text-anchor="middle">One Care Center</text>
+      <g transform="translate(870 275)">
+        <circle r="30" fill="#F2D3B3" stroke="#8F4510" stroke-width="2.5"/>
+        <circle cx="-10" cy="-5" r="3.5" fill="#8F4510"/><circle cx="10" cy="-5" r="3.5" fill="#8F4510"/>
+        <path id="mouth" d="M-12 10 Q0 18 12 10" fill="none" stroke="#8F4510" stroke-width="2.5" stroke-linecap="round"/>
+      </g>
+      <text class="rule" x="870" y="328" text-anchor="middle">Dr. Everything</text>
+      <text class="rule" x="785" y="360">Burnout</text>
+      <rect class="track" x="785" y="368" width="170" height="14" rx="7"/>
+      <rect id="burnBar" x="785" y="368" width="0" height="14" rx="7" fill="#E0575E"/>
+      <text id="queueText" class="name" x="870" y="418" text-anchor="middle">Queue: 0</text>
+      <rect class="ink-fill" x="785" y="445" width="170" height="56" rx="28"/>
+      <text class="bg-text" x="870" y="479" text-anchor="middle">Treat next</text>
+    </g>
+    <g id="ghosts"></g><g id="pieces"></g><g id="badges"></g>
+    <g id="mergeBtn" transform="translate(500 605)" visibility="hidden">
+      <rect class="box" x="-150" y="-22" width="300" height="44" rx="22" style="stroke:var(--ink)" stroke-width="2"/>
+      <text class="name" y="6" text-anchor="middle" style="font-size:17px">Put all care in one place</text>
+    </g>
+    <g id="mergeHint" visibility="hidden" aria-hidden="true">
+      <text class="hint-label" x="686" y="579">Try another way</text>
+      <path class="hint-arrow" d="M742 605 H670 M683 593 L668 605 L683 617" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text id="hud-time" class="hud" x="485" y="668" text-anchor="end">Held together 0:00</text>
+    <text id="hud-lost" class="hud" x="515" y="668">Lost 0 of 3</text>
+  </svg>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="overlay" id="start">
+    <div class="card">
+      <h1>Hold yourself together</h1>
+      <p>Six anatomy layers overlap to form one patient: skin, muscles, skeleton, digestion, circulation and nerves. Each department sees its own system. You hold the whole together.</p>
+      <p>Whole system layers drift toward their matching departments. Drag each layer back onto the dashed patient outline before it reaches its desk. Play alone or with others, or try putting all care in one place.</p>
+      <button id="go">Start my care journey</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="end" hidden>
+    <div class="card">
+      <h1 id="endTitle"></h1>
+      <p class="big" id="reason"></p>
+      <div class="end-grid">
+        <section aria-label="Your game results"><div class="cert"><h2 id="certTitle"></h2><dl id="certStats"></dl></div>
+          <p class="reflection">You held the anatomy layers together. In real care, records, results and responsibility also need to stay connected.</p>
+          <button id="again">Try again</button>
+        </section>
+        <section class="case-panel" aria-labelledby="casesTitle">
+          <h2 id="casesTitle">When the whole gets lost</h2>
+          <p>Real patients. Documented information gaps.</p>
+          <div id="caseContent" aria-live="polite" aria-atomic="true">
+            <article class="case-story" data-case="0">
+              <div class="case-meta">UK HSSIB investigation · report published 2023</div>
+              <h3>Repeated visits. A pattern nobody could easily see.</h3>
+              <p>Brian, 67, had a history of breast cancer. Over eight months of unresolved back pain, he saw several GPs and other professionals. He and his family repeatedly had to retell his story.</p>
+              <p>A scan later found cancer that had spread to his spine. The investigation found that time pressure and the way records displayed separate appointments made it difficult to recognise the pattern of repeat visits.</p>
+              <p class="case-gap"><b>The gap:</b> his history was recorded, but the system did not bring the ongoing symptoms together clearly enough to support continuity of care.</p>
+              <a class="case-source" href="https://www.hssib.org.uk/patient-safety-investigations/continuity-of-care-delayed-diagnosis-in-gp-practices/investigation-report/" target="_blank" rel="noopener noreferrer">Read the investigation ↗</a>
+            </article>
+            <article class="case-story" data-case="1" hidden>
+              <div class="case-meta">UK HSIB investigation · patient event 2017</div>
+              <h3>A possible cancer finding waited three months</h3>
+              <p>A 76-year-old woman was treated for a heart attack. A chest X-ray report later identified possible lung cancer. The pending X-ray was omitted from her discharge summary, and subsequent alerts did not lead to follow-up.</p>
+              <p>Almost three months later, her GP found the report and arranged further investigation.</p>
+              <p class="case-gap"><b>The gap:</b> information moved between radiology, emergency care and cardiology, without ensuring someone acted on it.</p>
+              <a class="case-source" href="https://www.hssib.org.uk/patient-safety-investigations/failures-in-communication-or-follow-up-of-unexpected-significant-radiological-findings/investigation-report/" target="_blank" rel="noopener noreferrer">Read the investigation ↗</a>
+            </article>
+            <article class="case-story" data-case="2" hidden>
+              <div class="case-meta">UK HSIB investigation · patient event 2018</div>
+              <h3>Two blood thinners. Two versions of the plan.</h3>
+              <p>Ann Midson, 75, was switched from an injected blood thinner to an oral one in hospital. After discharge, her pharmacy supplied the previous repeat prescription. She took both medicines at home.</p>
+              <p>Four further healthcare contacts did not detect the overlap. A hospice nurse discovered it 15 days after discharge; the report describes a possible gastrointestinal bleed.</p>
+              <p class="case-gap"><b>The gap:</b> the hospital’s medication change was not reconciled across the GP, pharmacy and home-care pathway.</p>
+              <a class="case-source" href="https://www.hssib.org.uk/patient-safety-investigations/electronic-prescribing-and-medicines-administration-systems-and-safe-discharge/investigation-report/" target="_blank" rel="noopener noreferrer">Read the investigation ↗</a>
+            </article>
+          </div>
+          <nav class="case-nav" aria-label="Browse documented cases"><button id="casePrev" disabled aria-label="Previous case">← Previous</button><span id="caseCount">Case 1 of 3</span><button id="caseNext" aria-label="Next case">Next →</button></nav>
+          <p class="case-note">These cases illustrate failures of communication and follow-up. They do not establish how often this happens or validate every rule in this fictional game. Summaries are paraphrased from the linked reports.</p>
+        </section>
+      </div>
+      <p class="big reflection">Who designs the whole—and who makes sure nothing falls between the layers?</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const svg=$('arena');
+const L={tethers:$('tethers'),desks:$('desks'),ghosts:$('ghosts'),pieces:$('pieces'),badges:$('badges')};
+const CENTER=[770,360];
+const PROV={
+  Neurology:{c:'#8B6FD6',d:'#4A3591',rule:'Nervous system · waitlist',desk:[110,130]},
+  GP:{c:'#F2B48A',d:'#A5602B',rule:'Skin · one issue per visit',desk:[890,130]},
+  Cardiology:{c:'#E0575E',d:'#8E1F25',rule:'Circulatory system only',desk:[110,360]},
+  Gastroenterology:{c:'#2EA59A',d:'#11625B',rule:'Digestive system · referral',desk:[890,360]},
+  Physio:{c:'#6DB35A',d:'#2F6B22',rule:'Muscular system · 9 sessions',desk:[110,590]},
+  Orthopaedics:{c:'#D8C8A0',d:'#7C6B3E',rule:'Skeletal system · paperwork',desk:[890,590]}
+};
+const DEF=[
+  {id:'skin',prov:'GP',part:'skin layer',system:'Skin / integumentary'},
+  {id:'musc',prov:'Physio',part:'muscular system',system:'Muscular system'},
+  {id:'bone',prov:'Orthopaedics',part:'skeletal system',system:'Skeletal system'},
+  {id:'dig',prov:'Gastroenterology',part:'digestive system',system:'Digestive system'},
+  {id:'circ',prov:'Cardiology',part:'circulatory system',system:'Circulatory system'},
+  {id:'nerv',prov:'Neurology',part:'nervous system',system:'Nervous system'}
+].map(d=>Object.assign(d,{sx:500,sy:335}));
+const MSG={
+  GP:['GP: One issue per visit, please.','GP: I will refer you.'],
+  Cardiology:['Cardiology: I only see your circulatory system.','Cardiology: Your file never arrived.'],
+  Physio:['Physio: Let us work on your muscular system.','Physio: Do these exercises 3 times a day.'],
+  Neurology:['Neurology: Your nervous-system appointment is on the waitlist.','Neurology: We need the previous test results.'],
+  Gastroenterology:['Gastroenterology: We need a referral from your GP.','Gastroenterology: Your digestive symptoms are in another file.'],
+  Orthopaedics:['Orthopaedics: Please fill in form 7B.','Orthopaedics: Your skeletal-system referral is being processed.']
+};
+const CMSG=['Care Center: Please take a number.','Care Center: One door for everything. One queue too.','Care Center: Your call is important to us.','Care Center: Dr. Everything will see you soon.'];
+
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function both(g,f){f(g);f(el('g',{transform:'scale(-1 1)'},g));}
+function ln(g,x1,y1,x2,y2,w,c,d){const a={x1,y1,x2,y2,'stroke-linecap':'round'};if(d)el('line',Object.assign({},a,{stroke:d,'stroke-width':w+4}),g);el('line',Object.assign({},a,{stroke:c,'stroke-width':w}),g);}
+function sil(g,a){
+  el('path',Object.assign({d:'M0 -226 C-24 -226 -38 -208 -38 -185 C-38 -164 -27 -150 -15 -145 L-15 -135 L-46 -131 Q-64 -129 -70 -110 L-92 18 Q-96 40 -84 44 Q-73 48 -70 30 L-51 -67 L-49 0 L-47 205 Q-48 215 -60 218 Q-70 226 -54 229 L-20 229 Q-10 229 -10 216 L-7 36 Q0 29 7 36 L10 216 Q10 229 20 229 L54 229 Q70 226 60 218 Q48 215 47 205 L49 0 L51 -67 L70 30 Q73 48 84 44 Q96 40 92 18 L70 -110 Q64 -129 46 -131 L15 -135 L15 -145 C27 -150 38 -164 38 -185 C38 -208 24 -226 0 -226Z'},a),g);
+}
+const BL='#4C86D9';
+const ART={
+skin(g,c,d){el('path',{id:'hair',style:'display:none',d:'M-44 -190 Q-44 -232 0 -232 Q44 -232 44 -190 L50 -110 L-50 -110Z',fill:'#7A4A2B'},g);sil(g,{fill:d,stroke:d,'stroke-width':5});sil(g,{fill:c});
+  el('circle',{cx:-13,cy:-184,r:4,fill:d},g);el('circle',{cx:13,cy:-184,r:4,fill:d},g);
+  el('path',{d:'M-12 -168 Q0 -160 12 -168',fill:'none',stroke:d,'stroke-width':2.5,'stroke-linecap':'round'},g);},
+musc(g,c,d){const a={fill:c,stroke:d,'stroke-width':1.8,opacity:.82};
+  el('ellipse',Object.assign({cx:0,cy:-187,rx:28,ry:31},a),g);
+  both(g,h=>{
+    el('path',Object.assign({d:'M-3 -130 Q-27 -148 -49 -121 L-44 -92 Q-20 -88 -3 -104Z'},a),h);
+    el('path',Object.assign({d:'M-53 -121 Q-72 -125 -75 -95 L-82 -53 Q-74 -39 -65 -55 L-52 -91Z'},a),h);
+    el('path',Object.assign({d:'M-80 -45 Q-68 -48 -70 -22 L-79 31 L-88 31Z'},a),h);
+    el('path',Object.assign({d:'M-25 -87 L-47 -80 L-44 -14 L-28 -5Z'},a),h);
+    [-82,-57,-32].forEach(y=>el('rect',Object.assign({x:-23,y,width:20,height:20,rx:6},a),h));
+    el('path',Object.assign({d:'M-45 2 Q-28 -8 -12 5 L-13 99 Q-23 118 -39 98Z'},a),h);
+    el('path',Object.assign({d:'M-39 118 Q-23 106 -15 127 L-17 200 L-37 200Z'},a),h);
+    ln(h,-41,8,-17,101,2,'#f6dfbe');ln(h,-36,122,-20,204,2,'#f6dfbe');
+  });},
+dig(g,c,d){
+  ln(g,0,-166,0,-112,6,c,d);
+  el('ellipse',{cx:-26,cy:-100,rx:23,ry:11,fill:d,stroke:d,'stroke-width':2},g);
+  el('ellipse',{cx:14,cy:-98,rx:20,ry:13,transform:'rotate(25 14 -98)',fill:c,stroke:d,'stroke-width':2.5},g);
+  const s='M-34 -66 H34 V-46 H-34 V-26 H34 V-6 H-26';
+  el('path',{d:s,fill:'none',stroke:d,'stroke-width':16,'stroke-linejoin':'round','stroke-linecap':'round'},g);
+  el('path',{d:s,fill:'none',stroke:c,'stroke-width':10,'stroke-linejoin':'round','stroke-linecap':'round'},g);},
+bone(g,c,d){const a={fill:c,stroke:d,'stroke-width':2.5};
+  el('circle',Object.assign({cx:0,cy:-187,r:27},a),g);el('rect',Object.assign({x:-13,y:-166,width:26,height:13,rx:4},a),g);
+  el('circle',{cx:-10,cy:-190,r:6,fill:d},g);el('circle',{cx:10,cy:-190,r:6,fill:d},g);
+  ln(g,0,-150,0,18,9,c,d);
+  both(g,h=>{[-122,-102,-82,-62].forEach(y=>ln(h,0,y,-40,y+10,6,c,d));
+    ln(h,-30,-130,-79,-126,8,c,d);ln(h,-79,-126,-79,20,8,c,d);ln(h,-26,18,-26,215,10,c,d);
+    el('circle',Object.assign({cx:-26,cy:115,r:9},a),h);el('circle',Object.assign({cx:-79,cy:-52,r:7},a),h);});
+  el('ellipse',Object.assign({cx:0,cy:24,rx:44,ry:17},a),g);},
+circ(g,c,d){
+  ln(g,-5,-150,-5,18,6,BL);ln(g,5,-150,5,18,6,c);
+  ln(g,-4,-150,-6,-178,3,BL);ln(g,4,-150,6,-178,3,c);
+  both(g,h=>{ln(h,-8,-112,-72,-116,4,BL);ln(h,-72,-116,-80,25,3,BL);ln(h,-10,-106,-66,-108,3,c);ln(h,-66,-108,-76,25,3,c);
+    ln(h,-8,18,-30,115,5,BL);ln(h,-30,115,-30,215,4,BL);ln(h,-3,18,-22,115,3,c);ln(h,-22,115,-22,215,3,c);});
+  el('path',{d:'M0 14 C-26 -4 -20 -28 0 -14 C20 -28 26 -4 0 14Z',transform:'translate(-8 -92)',fill:c,stroke:d,'stroke-width':2.5},g);},
+nerv(g,c,d){
+  ln(g,0,-190,0,28,5,c,d);
+  both(g,h=>{[-118,-92,-66].forEach(y=>ln(h,0,y,-40,y+12,3,c));
+    ln(h,0,-126,-79,-120,4,c);ln(h,-79,-120,-79,34,3,c);ln(h,0,28,-28,120,4,c);ln(h,-28,120,-28,215,3,c);});
+  both(g,h=>{[-110,-85,-60,-35,0].forEach(y=>{ln(h,-79,y,-87,y+12,1.5,c);ln(h,-79,y,-69,y+12,1.5,c);});[80,115,150,185].forEach(y=>{ln(h,-28,y,-39,y+15,1.5,c);ln(h,-28,y,-17,y+15,1.5,c);});});
+  el('ellipse',{cx:0,cy:-203,rx:25,ry:15,fill:c,stroke:d,'stroke-width':2.5},g);
+  el('path',{d:'M-14 -207 q7 -7 14 0 t14 0 M-12 -198 q6 -6 12 0 t12 0',fill:'none',stroke:d,'stroke-width':2},g);}
+};
+
+function restack(){for(const p of pieces.filter(p=>p.state==='attached'))L.pieces.appendChild(p.g);for(const p of pieces.filter(p=>p.state!=='attached'))L.pieces.appendChild(p.g);}
+for(const name in PROV){
+  const p=PROV[name],[x,y]=p.desk;
+  const g=el('g',{transform:`translate(${x} ${y})`},L.desks);
+  el('rect',{class:'box',x:-100,y:-35,width:200,height:70,rx:10,stroke:p.c,'stroke-width':3},g);
+  el('text',{class:'name','text-anchor':'middle',y:-4},g).textContent=name;
+  el('text',{class:'rule','text-anchor':'middle',y:19},g).textContent=p.rule;
+}
+sil(el('g',{transform:'translate(500 335)'},L.ghosts),{class:'ghost'});
+const pieces=DEF.map(d=>{
+  const col=PROV[d.prov],g=el('g',{class:'piece','data-id':d.id,'aria-label':d.system+' to '+d.prov},L.pieces);
+  // Broad full-body touch target. Attached layers never intercept a drifting layer.
+  sil(g,{fill:'transparent',stroke:'transparent','stroke-width':20});
+  const backing=el('g',{},g);
+  sil(backing,{fill:col.c,'fill-opacity':d.id==='skin'?0:.06,stroke:col.c,'stroke-opacity':d.id==='skin'?0:.5,'stroke-width':1.5});
+  ART[d.id](g,col.c,col.d);
+  const tether=el('line',{stroke:col.c,'stroke-width':2,'stroke-dasharray':'4 6',opacity:.7,visibility:'hidden'},L.tethers);
+  const badge=el('text',{class:'badge','text-anchor':'middle'},L.badges);
+  return Object.assign({},d,{g,tether,badge});
+});
+const toastEl=$('toast');let toastTimer;
+function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),2300);}
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const fmt=s=>{s=Math.floor(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+
+let mode='idle',phase='split',t=0,tm=0,nextEvent=0,lost=0,stats,collapseT=0,endShown=false,reason='';
+let mergeHintAnnounced=false;
+let queue=[],busy=0,burnout=0,players=1,announced=1,crowded=0;
+const drags=new Map(),active=new Set(),peaks=[];
+
+function reset(){
+  for(const p of pieces)Object.assign(p,{x:p.sx,y:p.sy,rot:0,vr:0,vx:0,vy:0,state:'attached',lock:0,taps:3,wait:0});
+  mode='idle';phase='split';t=0;tm=0;lost=0;nextEvent=1.5;collapseT=0;endShown=false;crowded=0;mergeHintAnnounced=false;
+  queue=[];busy=0;burnout=0;players=1;announced=1;drags.clear();active.clear();peaks.length=0;restack();
+  stats={back:0,ref:0,forms:0,physio:0,treated:0,maxQ:0,players:1};
+  L.desks.setAttribute('visibility','visible');$('center').setAttribute('visibility','hidden');
+}
+function pilePos(i){return [60+i*70,565];}
+function sendToPile(p){const [x,y]=pilePos(lost-1);p.x=x;p.y=y;}
+
+function pressure(){return 1+.65*(players-1);}
+
+function detachRandom(){
+  const c=pieces.filter(p=>p.state==='attached');if(!c.length)return;
+  const p=pick(c),[dx,dy]=PROV[p.prov].desk,dist=Math.hypot(dx-p.x,dy-p.y);
+  p.x+=(dx-p.x)/dist*14;p.y+=(dy-p.y)/dist*14;
+  p.state='drifting';p.vr=0;L.pieces.appendChild(p.g);
+  if(p.prov==='Neurology')p.lock=3;
+  if(p.prov==='Orthopaedics')p.taps=0;
+  toast(pick(MSG[p.prov]));
+  if(!pieces.some(q=>q.state==='attached'||q.state==='dragging'))collapse('apart');
+}
+function lose(p){
+  const [dx,dy]=PROV[p.prov].desk;
+  p.state='lost';p.x=dx+(dx<500?112:-112);p.y=dy;lost++;
+  toast(`The ${p.prov} kept your ${p.part}.`);
+  if(lost>=3)collapse('lost');
+}
+function tryAttach(p){
+  if(Math.hypot(p.x-p.sx,p.y-p.sy)>85){p.state='drifting';return;}
+  const gp=pieces.find(q=>q.prov==='GP');
+  if((p.prov==='Cardiology'||p.prov==='Gastroenterology')&&gp.state!=='attached'){
+    stats.ref++;p.state='drifting';p.x+=p.x<500?-50:50;
+    toast(p.prov==='Cardiology'?'Cardiology: No referral from your GP, no appointment.':'Gastroenterology: No GP referral, no appointment.');
+    return;
+  }
+  p.state='attached';p.x=p.sx;p.y=p.sy;p.rot=0;stats.back++;restack();
+  if(p.prov==='Physio'){stats.physio++;toast(stats.physio<=9?`Physio: Session ${stats.physio} of 9 covered.`:`Physio: Session ${stats.physio}. Not covered, that is €45.`);}
+  else if(p.prov==='GP')toast('GP: Good. Now tell me everything again from the start.');
+}
+
+function merge(){
+  if(mode!=='play'||phase!=='split')return;
+  phase='merged';tm=0;nextEvent=2.5;busy=0;burnout=0;queue=[];drags.clear();
+  let i=0;
+  for(const p of pieces){
+    if(p.state==='lost'){i++;const [x,y]=pilePos(i-1);p.x=x;p.y=y;}
+    else{p.state='attached';p.x=p.sx;p.y=p.sy;p.rot=0;}
+  }
+  L.desks.setAttribute('visibility','hidden');$('center').setAttribute('visibility','visible');
+  toast('Everything in one place. Finally.');
+}
+function needCare(){
+  const c=pieces.filter(p=>p.state==='attached');if(!c.length)return;
+  const p=pick(c);p.state='waiting';p.wait=Math.max(6,14-tm*.08);
+  queue.push(p);stats.maxQ=Math.max(stats.maxQ,queue.length);toast(pick(CMSG));
+}
+function treat(){
+  if(mode!=='play'||phase!=='merged')return;
+  if(busy>0){burnout+=3;toast('Dr. Everything: Please wait your turn.');}
+  else if(!queue.length){toast('Dr. Everything: Nobody is waiting. Enjoy it while it lasts.');return;}
+  else{const p=queue.shift();p.state='attached';busy=.9;burnout+=5+tm*.12;stats.treated++;toast(`Dr. Everything treated your ${p.part}.`);}
+  if(burnout>=100)collapse('burnout');
+}
+
+function collapse(why){
+  if(mode!=='play')return;
+  mode='collapse';reason=why;drags.clear();collapseT=0;
+  for(const p of pieces){if(p.state!=='lost'){p.state='fall';p.vx=(Math.random()-.5)*300;p.vy=-180-Math.random()*220;p.vr=(Math.random()-.5)*400;}}
+}
+function showEnd(){
+  endShown=true;mode='end';
+  const R={
+    lost:'Three anatomy systems ended up at three separate departments.',
+    apart:'All six anatomy systems were separated from the patient at the same time.',
+    time:'You held on for 2:30. Then the system reorganised.',
+    burnout:'Dr. Everything collapsed. One person cannot hold everything.',
+    queue:'Everything was in one place. So was the queue. Too many system layers were lost while waiting.',
+    timeM:'You held on for 2:30. Then the Care Center was split up again to save costs.'
+  };
+  const merged=phase==='merged';
+  $('endTitle').textContent=merged?'It broke down.':'You fell apart.';
+  $('reason').textContent=R[reason==='time'&&merged?'timeM':reason];
+  $('certTitle').textContent=merged?'Care Center of the Year':'Patient Manager of the Month';
+  const rows=merged?[
+    ['Held yourself together',fmt(t)],['Treatments by one doctor',stats.treated],['Longest queue',stats.maxQ],
+    ['Doctor burnout',Math.min(100,Math.round(burnout))+'%'],['System layers lost',lost],['Players',stats.players],['Waiting time saved','0 minutes']
+  ]:[
+    ['Held yourself together',fmt(t)],['System layers reunited',stats.back],['Referrals you had to chase',stats.ref],
+    ['Form pages filled in',stats.forms],['Systems kept by departments',lost],['Players',stats.players]
+  ];
+  const dl=$('certStats');dl.textContent='';
+  for(const [k,v] of rows){const dt=document.createElement('dt');dt.textContent=k;const dd=document.createElement('dd');dd.textContent=v;dl.append(dt,dd);}
+  showCase(0);$('end').hidden=false;$('end').scrollTop=0;$('again').focus({preventScroll:true});
+}
+
+let caseIndex=0;
+function showCase(i){
+  caseIndex=Math.max(0,Math.min(2,i));
+  document.querySelectorAll('.case-story').forEach((card,n)=>{card.hidden=n!==caseIndex;});
+  $('caseCount').textContent=`Case ${caseIndex+1} of 3`;
+  $('casePrev').disabled=caseIndex===0;$('caseNext').disabled=caseIndex===2;
+}
+$('casePrev').addEventListener('click',()=>showCase(caseIndex-1));
+$('caseNext').addEventListener('click',()=>showCase(caseIndex+1));
+
+function toSvg(e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+svg.addEventListener('pointerdown',e=>{
+  active.add(e.pointerId);peaks.push({n:active.size,at:performance.now()});
+  if(mode!=='play')return;
+  if(e.target.closest('#mergeBtn')&&phase==='split'&&t>=8){e.preventDefault();merge();return;}
+  if(e.target.closest('#center')){e.preventDefault();treat();return;}
+  const g=e.target.closest('.piece');if(!g||phase!=='split')return;
+  const p=pieces.find(q=>q.id===g.dataset.id);
+  if(p.state!=='drifting')return;
+  e.preventDefault();
+  if(p.lock>0){toast('Neurology: You are still on the waitlist.');return;}
+  if(p.prov==='Orthopaedics'&&p.taps<3){
+    p.taps++;stats.forms++;
+    toast(`Form 7B: page ${p.taps} of 3 filled in.`+(p.taps<3?' Tap again.':' Now drag it back.'));
+    return;
+  }
+  const pt=toSvg(e);
+  drags.set(e.pointerId,{p,ox:p.x-pt.x,oy:p.y-pt.y});p.state='dragging';
+  try{svg.setPointerCapture(e.pointerId);}catch(_){}
+});
+svg.addEventListener('pointermove',e=>{const d=drags.get(e.pointerId);if(!d)return;const pt=toSvg(e);d.p.x=pt.x+d.ox;d.p.y=pt.y+d.oy;});
+function up(e){
+  active.delete(e.pointerId);
+  const d=drags.get(e.pointerId);if(!d)return;drags.delete(e.pointerId);
+  if(mode==='play'&&phase==='split'&&d.p.state==='dragging')tryAttach(d.p);
+}
+svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
+
+function countPlayers(){
+  const now=performance.now();
+  while(peaks.length&&now-peaks[0].at>8000)peaks.shift();
+  let n=1;for(const k of peaks)n=Math.max(n,k.n);
+  players=Math.min(4,n);stats.players=Math.max(stats.players,players);
+  if(players>announced){announced=players;toast(`${players} people holding one patient? The system noticed. Demand goes up.`);}
+}
+
+const hudTime=$('hud-time'),hudLost=$('hud-lost'),mergeBtn=$('mergeBtn');
+function render(){
+  for(const p of pieces){
+    let sc=1;
+    if(p.state==='lost')sc=.23;
+    else if(p.state==='fall')sc=.55;
+    else if(p.state==='drifting'||p.state==='dragging'){
+      const [dx,dy]=PROV[p.prov].desk;
+      sc=Math.max(.42,Math.min(1,Math.hypot(dx-p.x,dy-p.y)/430));
+    }
+    p.g.setAttribute('transform',`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${p.rot.toFixed(1)}) scale(${sc.toFixed(3)})`);
+    p.g.style.pointerEvents=p.state==='drifting'?'auto':'none';
+    p.g.style.opacity=p.state==='lost'?.7:p.state==='waiting'?.4:1;
+    p.g.classList.toggle('grab',p.state==='drifting'&&mode==='play');
+    const [tx,ty]=phase==='merged'?CENTER:PROV[p.prov].desk;
+    if(p.state==='drifting'||p.state==='dragging'||p.state==='waiting'){
+      p.tether.setAttribute('x1',p.x);p.tether.setAttribute('y1',p.y);p.tether.setAttribute('x2',tx);p.tether.setAttribute('y2',ty);p.tether.setAttribute('visibility','visible');
+    }else p.tether.setAttribute('visibility','hidden');
+    let b=(mode==='play'&&(p.state==='drifting'||p.state==='dragging'||p.state==='lost'))?p.system:'';
+    if(mode==='play'){
+      if(p.state==='drifting'&&p.lock>0)b=p.system+' · wait '+Math.ceil(p.lock)+'s';
+      else if(p.state==='drifting'&&p.prov==='Orthopaedics'&&p.taps<3)b=`${p.system} · form ${p.taps}/3`;
+      else if(p.state==='waiting')b=`Queue #${queue.indexOf(p)+1}, ${Math.ceil(p.wait)}s`;
+    }
+    p.badge.textContent=b;
+    p.badge.setAttribute('x',p.x);
+    p.badge.setAttribute('y',Math.max(55,p.y-235*sc));
+    if(p.state==='waiting'){
+      p.badge.textContent=p.system+' · queue '+(queue.indexOf(p)+1);
+      p.badge.setAttribute('x',500);p.badge.setAttribute('y',72+pieces.indexOf(p)*19);
+    }
+  }
+  const mergeAvailable=mode==='play'&&phase==='split'&&t>=8;
+  const highlightMerge=mergeAvailable&&t<15;
+  mergeBtn.setAttribute('visibility',mergeAvailable?'visible':'hidden');
+  $('mergeHint').setAttribute('visibility',highlightMerge?'visible':'hidden');
+  mergeBtn.classList.toggle('merge-attention',highlightMerge);
+  if(mergeAvailable&&!mergeHintAnnounced){mergeHintAnnounced=true;toast('New option: try putting all care in one place.');}
+  if(phase==='merged'){
+    $('burnBar').setAttribute('width',(170*Math.min(1,burnout/100)).toFixed(1));
+    $('queueText').textContent='Queue: '+queue.length;
+    $('mouth').setAttribute('d',burnout<40?'M-12 10 Q0 18 12 10':burnout<75?'M-12 12 L12 12':'M-12 16 Q0 6 12 16');
+  }
+  hudTime.textContent='Held together '+fmt(t);
+  hudLost.textContent=`Lost ${lost} of 3`;
+}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(mode==='play'){
+    t+=dt;countPlayers();const pf=pressure();
+    if(phase==='split'){
+      const attached=pieces.filter(p=>p.state==='attached').length;
+      crowded=attached>=5?crowded+dt:0;
+      nextEvent-=dt*(crowded>3?1.8:1);
+      if(nextEvent<=0){detachRandom();nextEvent=Math.max(.5,3.4-t*.035)/pf*(.7+Math.random()*.6);}
+      const speed=Math.min(140,24+t*.9)*(1+.25*(players-1));
+      for(const p of pieces){
+        if(mode!=='play')break;
+        if(p.lock>0)p.lock=Math.max(0,p.lock-dt);
+        if(p.state==='drifting'){
+          const [dx,dy]=PROV[p.prov].desk,vx=dx-p.x,vy=dy-p.y,dist=Math.hypot(vx,vy);
+          if(dist<22)lose(p);else{p.x+=vx/dist*speed*dt;p.y+=vy/dist*speed*dt;p.rot+=p.vr*dt;}
+        }
+      }
+    }else{
+      tm+=dt;if(busy>0)busy-=dt;nextEvent-=dt;
+      if(nextEvent<=0){needCare();nextEvent=Math.max(.6,3-tm*.04)/pf*(.7+Math.random()*.6);}
+      burnout=Math.max(0,burnout-.5*dt+queue.length*.4*dt);
+      for(const p of [...queue]){
+        p.wait-=dt;
+        if(p.wait<=0){queue.splice(queue.indexOf(p),1);p.state='lost';lost++;sendToPile(p);toast(`Your ${p.part} expired in the queue.`);if(lost>=3){collapse('queue');break;}}
+      }
+      if(mode==='play'&&burnout>=100)collapse('burnout');
+    }
+    if(mode==='play'&&t>=150)collapse('time');
+  }else if(mode==='collapse'){
+    for(const p of pieces){
+      if(p.state!=='fall')continue;
+      p.vy+=900*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
+      const ground=630-229*.55;
+      if(p.y>ground){p.y=ground;p.vy*=-.3;p.vx*=.7;p.vr*=.6;}
+      p.x=Math.max(220,Math.min(740,p.x));
+    }
+    collapseT+=dt;if(collapseT>2.2&&!endShown)showEnd();
+  }
+  render();requestAnimationFrame(frame);
+}
+function start(){reset();$('start').hidden=true;$('end').hidden=true;mode='play';}
+$('go').addEventListener('click',start);$('again').addEventListener('click',start);
+reset();render();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
